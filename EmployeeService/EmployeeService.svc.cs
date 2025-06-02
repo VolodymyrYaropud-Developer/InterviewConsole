@@ -22,63 +22,45 @@ namespace EmployeeService
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                try
-                {
-                    string command = "SELECT * FROM Employee WHERE ID = " + id + " OR ManagerID = " + id;
-                    SqlCommand cmd = new SqlCommand(command, conn);
+                conn.Open();
 
-                    conn.Open();
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                string command = "SELECT ID, Name, ManagerID, Enable FROM Employee";
+                SqlCommand cmd = new SqlCommand(command, conn);
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
                     {
-                        while (reader.Read())
+                        var emp = new Employee
                         {
-                            var emp = new Employee
-                            {
-                                ID = reader.GetInt32(0),
-                                Name = reader.GetString(1),
-                                ManagerID = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
-                                Enable = reader.GetBoolean(3)
-                            };
-                            emp.Employees = new List<Employee>();
+                            ID = reader.GetInt32(0),
+                            Name = reader.GetString(1),
+                            ManagerID = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
+                            Enable = reader.GetBoolean(3),
+                            Employees = new List<Employee>()
+                        };
 
-                            allEmployees[emp.ID] = emp;
-                        }
+                        allEmployees[emp.ID] = emp;
                     }
-                }
-                finally
-                {
-
-                    conn.Close();
                 }
             }
 
             foreach (var emp in allEmployees.Values)
             {
-                if (emp.ManagerID.HasValue)
+                if (emp.ManagerID.HasValue && allEmployees.ContainsKey(emp.ManagerID.Value))
                 {
-                    if (allEmployees.ContainsKey(emp.ManagerID.Value))
-                    {
-                        allEmployees[emp.ManagerID.Value].Employees.Add(emp);
-                    }
-                    else
-                    {
-                        allEmployees.Add(emp.ManagerID.Value, emp);
-                    }
+                    allEmployees[emp.ManagerID.Value].Employees.Add(emp);
                 }
             }
 
-            response.Employee = allEmployees[id];
-
-            foreach(var emp in allEmployees.Values)
+            if (allEmployees.ContainsKey(id))
             {
-                if (emp.ID != id)
-                {
-                    response.Employee.Employees.Add(emp);
-                }
+                response.Employee = allEmployees[id];
             }
 
             return response;
         }
+
 
         public void EnableEmployee(int id, int enable)
         {
